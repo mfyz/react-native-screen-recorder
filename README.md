@@ -1,3 +1,14 @@
+# mfyz's Notes/Tweaks
+
+### Changes/Tweaks over the original repo
+
+- Android build target and build tools are updated to more recent versions (except gradle)
+- Movie recording target changed from External SD to temp cache folder/file. (I will use the recorded mp4 to convert to gif frames using ffmpeg on top of this repo). In order to find the recorded file, in your emulator, Open Android Studio > View > Tool Windows > Device File Explorer. In the tool window navigate to /data/data/com.screenrecorder/cache (or files) folders. See mp4 files after each recording. You can right click and save file to your desktop for further inspection.
+
+Note: Just Android is tested. iOS not tested! But I implemented screen recroding using same library to iOS on RN in the past.
+
+-----
+
 # Screen Recorder
 This project is set up using [create-react-native-app](https://github.com/react-community/create-react-native-app) by facebook.
 
