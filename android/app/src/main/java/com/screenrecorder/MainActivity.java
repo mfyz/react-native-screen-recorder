@@ -16,6 +16,7 @@ import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
+import java.io.File;
 import java.io.IOException;
 
 public class MainActivity extends ReactActivity {
@@ -130,16 +131,24 @@ public class MainActivity extends ReactActivity {
         try {
             mMediaRecorder = new MediaRecorder();
             mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-            videoPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/video.mp4";
+//            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+
+            File outputDir = getApplicationContext().getCacheDir();
+            File outputFile = File.createTempFile("recording", ".mp4", outputDir);
+            videoPath = outputFile.getAbsolutePath();
+//            videoPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/video.mp4";
             mMediaRecorder.setOutputFile(videoPath);
+
             mMediaRecorder.setVideoSize(DISPLAY_WIDTH, DISPLAY_HEIGHT);
             mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
             mMediaRecorder.setVideoEncodingBitRate(512 * 1000);
             mMediaRecorder.setVideoFrameRate(30);
-            int rotation = getWindowManager().getDefaultDisplay().getRotation();
-            int orientation = ORIENTATIONS.get(rotation + 90);
-            mMediaRecorder.setOrientationHint(orientation);
+            
+//            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+//            int orientation = ORIENTATIONS.get(rotation + 90);
+//            mMediaRecorder.setOrientationHint(orientation);
+
             mMediaRecorder.prepare();
         } catch (IOException e) {
             e.printStackTrace();
