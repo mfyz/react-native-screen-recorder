@@ -10,7 +10,6 @@ import android.media.MediaRecorder;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.SparseIntArray;
@@ -18,6 +17,12 @@ import android.view.Surface;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+
+import nl.bravobit.ffmpeg.ExecuteBinaryResponseHandler;
+import nl.bravobit.ffmpeg.FFmpeg;
 
 public class MainActivity extends ReactActivity {
 
@@ -32,7 +37,13 @@ public class MainActivity extends ReactActivity {
     private MediaProjectionCallback mMediaProjectionCallback;
     private MediaRecorder mMediaRecorder;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+
+    private File cacheDir;
+    private File filesDir;
     private String videoPath;
+    private String gifPath;
+
+    private FFmpeg ffmpeg;
 
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -45,6 +56,16 @@ public class MainActivity extends ReactActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        cacheDir = getApplicationContext().getCacheDir();
+        filesDir = getApplicationContext().getFilesDir();
+
+        ffmpeg = FFmpeg.getInstance(this);
+        if (ffmpeg.isSupported()) {
+            Log.d("FFMPEG-SUPPORT", "YES - FFMPEG IS SUPPORTED");
+        } else {
+            Log.d("FFMPEG-SUPPORT", "NO - FFMPEG IS __NOT__ SUPPORTED");
+        }
+
         RecorderManager.updateActivity(this);
 
         DisplayMetrics metrics = new DisplayMetrics();
@@ -54,7 +75,22 @@ public class MainActivity extends ReactActivity {
         mMediaRecorder = null;
 
         mProjectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+
+//        loadFFMpegBinary();
     }
+
+//    private void loadFFMpegBinary() {
+//        try {
+//            ffmpeg.loadBinary(new LoadBinaryResponseHandler() {
+//                @Override
+//                public void onFailure() {
+//                    Log.d("FFMPEG-INIT", "Failed! onFailure");
+//                }
+//            });
+//        } catch (FFmpegNotSupportedException e) {
+//            Log.d("FFMPEG-INIT", "Failed! Exception!");
+//        }
+//    }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -100,10 +136,61 @@ public class MainActivity extends ReactActivity {
             mMediaRecorder.setOnErrorListener(null);
             mMediaRecorder.stop();
             mMediaRecorder.reset();
+            convertMovieToGif();
             stopScreenSharing();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void convertMovieToGif() {
+//        videoPath
+        /*
+            -i
+            /inout/file/path.mp4
+            -ss 15 (starting second) - if we want to trim the video
+            -t 20 (seconds after starting second) - if we want to trim the video
+            -r 10 (frame per second)
+            -vf scale=160:90 (resize)
+            -vf "crop=in_w:in_h-50"
+            /output/gif/file/path.gif
+            -hide_banner - disable copyright banner
+        */
+
+        // Scale/resize
+        String filters = "scale=500:-1";
+
+        // High quality gif export
+        filters += ",split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse";
+
+        String cmdStr = "-i " + videoPath + " -vf " + filters + " -r 10 " + gifPath;
+        Log.d("FFMPEG-EXEC", "Command: " + cmdStr);
+
+        String[] cmd = cmdStr.split(" ");
+        ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler() {
+            @Override
+            public void onStart() {
+                Log.d("FFMPEG-INS START", "Starting the ffmpeg command");
+            }
+
+            @Override
+            public void onProgress(String message) {}
+
+            @Override
+            public void onFailure(String message) {
+                Log.d("FFMPEG-INS FAIL", message);
+            }
+
+            @Override
+            public void onSuccess(String message) {
+                Log.d("FFMPEG-INS SUCCESS", message);
+            }
+
+            @Override
+            public void onFinish() {
+                Log.d("FFMPEG-INS FINISH", "DONE!");
+            }
+        });
     }
 
     public String getVideoPath() {
@@ -134,10 +221,17 @@ public class MainActivity extends ReactActivity {
 //            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
             mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
 
-            File outputDir = getApplicationContext().getCacheDir();
-            File outputFile = File.createTempFile("recording", ".mp4", outputDir);
+            File outputFile = File.createTempFile("recording", ".mp4", cacheDir);
             videoPath = outputFile.getAbsolutePath();
 //            videoPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/video.mp4";
+
+            String[] videoPathArr = videoPath.split("/");
+            String[] videoFileNameArr = videoPathArr[videoPathArr.length - 1].split("\\.");
+            String outputFileName = videoFileNameArr[0] + ".gif";
+            gifPath = filesDir.getAbsolutePath() + "/" + outputFileName;
+            Log.d("PATHS DEFINED", ">>>>>>>>> IN videoPath: " + videoPath);
+            Log.d("PATHS DEFINED", "<<<<<<<<< OUT gifPath: " + gifPath);
+
             mMediaRecorder.setOutputFile(videoPath);
 
             mMediaRecorder.setVideoSize(DISPLAY_WIDTH, DISPLAY_HEIGHT);
